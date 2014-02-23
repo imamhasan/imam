@@ -1,0 +1,68 @@
+import os
+import webapp2
+import jinja2
+
+from google.appengine.ext import db
+
+template_dir = os.path.join(os.path.dirname(__file__),'template') ##dont write dirmane !!!!!! 
+jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
+                             autoescape = True)
+
+class Handler(webapp2.RequestHandler):
+    def write(self, *a, **kw):
+        self.response.out.write(*a, **kw)
+
+    def render_str(self, template, **params):
+        t= jinja_env.get_template(template)
+        return t.render(params)
+
+    def render(self, template, **kw):
+        self.write(self.render_str(template, **kw))
+
+class Art(db.Model):
+     country_name=  db.StringProperty(required= True)
+     district_name= db.StringProperty(required= True)
+     hospital_name= db.StringProperty(required= True)
+     year=          db.IntegerProperty()
+     month=         db.StringProperty(required= True)
+     age=           db.IntegerProperty()
+     disease_name=  db.StringProperty(required= True)
+     affected_people_number= db.IntegerProperty()
+     created=       db.DateTimeProperty(auto_now_add= True)
+
+class MainPage(Handler):
+    def render_front(self, country_name="" , district_name="",hospital_name="",year="",month="",age="", disease_name="",affected_people_number="", error=""):
+        
+        arts= db.GqlQuery("SELECT * FROM Art ORDER BY affected_people_number DESC")
+    
+        self.render("front.html",country_name=country_name,district_name=district_name ,hospital_name=hospital_name,year=year,month=month,age=age ,disease_name=disease_name, affected_people_number=affected_people_number, error=error, arts=arts)
+        
+
+    def get(self):
+        self.render_front()
+
+    def post(self):
+        country_name =self.request.get("country_name")
+        district_name =self.request.get("district_name")
+        hospital_name=self.request.get("hospital_name")
+        year=int(self.request.get("year"))
+        month=self.request.get("month")
+        age=int(self.request.get("age"))
+        disease_name=self.request.get("disease_name")
+        affected_people_number=int(self.request.get("affected_people_number"))
+
+        
+        if country_name and district_name and hospital_name and year and month and age and disease_name and affected_people_number :
+            thankss= "Thank you :)"
+            self.render_front(country_name ,district_name ,hospital_name, year ,month ,age ,disease_name, affected_people_number, thankss)
+
+            a=Art(country_name=country_name,district_name=district_name,hospital_name=hospital_name,year=year, month=month, age=age , disease_name=disease_name,affected_people_number=affected_people_number)
+            a.put()
+
+            self.redirect("/")
+           # self.write("thanks")
+        else:
+            error = "you need to fill them all"
+            self.render_front(country_name ,district_name ,hospital_name,year, month,age , disease_name, affected_people_number, error)
+
+app= webapp2.WSGIApplication([('/',MainPage)], debug=True)
